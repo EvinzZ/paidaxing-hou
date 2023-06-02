@@ -1,0 +1,4 @@
+server:
+  port: 9702
+  servlet:
+    context-path: /paidaxing
