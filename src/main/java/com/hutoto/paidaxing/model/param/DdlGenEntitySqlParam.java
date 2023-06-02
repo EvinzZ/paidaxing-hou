@@ -1,10 +1,11 @@
 package com.hutoto.paidaxing.model.param;
 
 import com.hutoto.paidaxing.enums.DaoOpsClientEnum;
+import com.hutoto.paidaxing.enums.DevLanOpsClientEnum;
 import lombok.Data;
 
 @Data
-public class DdlGenInsertSqlParam {
+public class DdlGenEntitySqlParam {
   private String ddlSql;
-  private DaoOpsClientEnum opsClient;
+  private DevLanOpsClientEnum opsClient;
 }
