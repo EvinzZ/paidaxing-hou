@@ -1,11 +1,13 @@
 package com.hutoto.paidaxing.controller;
 
 import com.hutoto.paidaxing.commons.Result;
+import com.hutoto.paidaxing.commons.ResultCode;
 import com.hutoto.paidaxing.exception.BizException;
 import com.hutoto.paidaxing.model.param.DdlGenEntitySqlParam;
 import com.hutoto.paidaxing.model.param.DdlGenInsertSqlParam;
 import com.hutoto.paidaxing.service.PgsqlGenService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,6 +23,12 @@ public class PgsqlGenController {
   @PostMapping("ddlGenInsertSql")
   public Result ddlGenInsertSql(@RequestBody DdlGenInsertSqlParam param) {
     try {
+      if (StringUtils.isBlank(param.getDdlSql())) {
+        return Result.custom(ResultCode.PARAM_IS_BLANK);
+      }
+      if (param.getOpsClient() == null) {
+        return Result.custom(ResultCode.PARAM_IS_BLANK);
+      }
       return Result.ok()
           .data(pgsqlGenService.ddlGenInsertSql(param.getDdlSql(), param.getOpsClient()));
     } catch (BizException v1) {
@@ -35,6 +43,12 @@ public class PgsqlGenController {
   @PostMapping("ddlGenEntity")
   public Result ddlGenEntity(@RequestBody DdlGenEntitySqlParam param) {
     try {
+      if (StringUtils.isBlank(param.getDdlSql())) {
+        return Result.custom(ResultCode.PARAM_IS_BLANK);
+      }
+      if (param.getOpsClient() == null) {
+        return Result.custom(ResultCode.PARAM_IS_BLANK);
+      }
       return Result.ok()
           .data(pgsqlGenService.ddlGenEntity(param.getDdlSql(), param.getOpsClient()));
     } catch (BizException v1) {

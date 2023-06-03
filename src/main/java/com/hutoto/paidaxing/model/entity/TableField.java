@@ -9,4 +9,6 @@ public class TableField {
   private String name;
   /** 字段类型 */
   private String type;
+  /** 备注 */
+  private String remark;
 }
