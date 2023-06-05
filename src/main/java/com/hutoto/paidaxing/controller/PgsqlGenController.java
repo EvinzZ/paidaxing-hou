@@ -50,7 +50,7 @@ public class PgsqlGenController {
         return Result.custom(ResultCode.PARAM_IS_BLANK);
       }
       return Result.ok()
-          .data(pgsqlGenService.ddlGenEntity(param.getDdlSql(), param.getOpsClient()));
+          .data(pgsqlGenService.ddlGenEntity(param.getDdlSql(), param.getOpsClient(), param.isUseLombok()));
     } catch (BizException v1) {
       log.error(v1.getMessage(), v1);
       return Result.error(v1.getMessage());

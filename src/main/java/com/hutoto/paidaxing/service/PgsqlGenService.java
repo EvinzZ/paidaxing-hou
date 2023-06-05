@@ -7,17 +7,18 @@ import com.hutoto.paidaxing.enums.TypePgsqlWithJavaEnum;
 import com.hutoto.paidaxing.exception.BizException;
 import com.hutoto.paidaxing.model.entity.TableField;
 import com.hutoto.paidaxing.model.entity.TableInfo;
+import com.hutoto.paidaxing.util.CreateDdlSqlUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 
 /** pgsql语句生成 */
 @Service
 public class PgsqlGenService {
+  ThreadLocal<Boolean> useLombok = ThreadLocal.withInitial(() -> true);
 
   /**
    * ddl语句生成insert语句
@@ -26,10 +27,11 @@ public class PgsqlGenService {
    * @return
    */
   public String ddlGenInsertSql(String ddlSql, DaoOpsClientEnum client) throws BizException {
-    String tableName = createDdlGetTableInfo(ddlSql).getName();
+    TableInfo tableInfo = CreateDdlSqlUtils.ddlGetTableInfo(ddlSql);
+    String tableName = tableInfo.getName();
     StringBuilder insertSql = new StringBuilder("INSERT INTO ");
     insertSql.append(tableName).append("(");
-    List<TableField> fieldList = createDdlGetFieldInfo(ddlSql);
+    List<TableField> fieldList = tableInfo.getFieldList();
     fieldList.forEach(o -> insertSql.append(o.getName()).append(", "));
     insertSql.deleteCharAt(insertSql.lastIndexOf(","));
     insertSql.deleteCharAt(insertSql.lastIndexOf(" "));
@@ -63,9 +65,12 @@ public class PgsqlGenService {
    *
    * @param ddlSql
    * @param client
+   * @param useLombok
    * @return
    */
-  public String ddlGenEntity(String ddlSql, DevLanOpsClientEnum client) throws BizException {
+  public String ddlGenEntity(String ddlSql, DevLanOpsClientEnum client, boolean useLombok)
+      throws BizException {
+    this.useLombok.set(useLombok);
     switch (client) {
       case Java:
         return ddlGenJavaEntity(ddlSql);
@@ -81,43 +86,114 @@ public class PgsqlGenService {
    * @return
    */
   public String ddlGenJavaEntity(String ddlSql) {
-    String entityName = getJavaEntityName(ddlSql); // 实体名
-    StringBuilder entityStr = new StringBuilder();
-    entityStr.append(formatJavaEntityRemark(ddlSql));
-    entityStr.append("public class ").append(entityName).append(" implements Serializable {\n");
-    entityStr.append("    private static final long serialVersionUID = 1L;\n");
-    List<TableField> fieldList = createDdlGetFieldInfo(ddlSql);
-    fieldList.forEach(
-        o ->
-            entityStr
-                .append(formatJavaFieldRemark(o.getRemark()))
-                .append("    private ")
-                .append(TypePgsqlWithJavaEnum.getJavaTypeByPgsqlType(o.getType()))
-                .append(" ")
-                .append(StrUtil.toCamelCase(o.getName()))
-                .append(";\n"));
-    entityStr.append("}");
+    TableInfo tableInfo = CreateDdlSqlUtils.ddlGetTableInfo(ddlSql);
+    StringBuilder entityStr = ddlGenJavaEntityInit(tableInfo);
+    List<TableField> fieldList = tableInfo.getFieldList();
+    for (TableField o : fieldList) {
+      TypePgsqlWithJavaEnum pgsqlType = TypePgsqlWithJavaEnum.getByPgsqlType(o.getType());
+      entityStr
+          .append(getFieldAnnotationAppend(pgsqlType))
+          .append(formatJavaFieldRemark(o.getRemark()))
+          .append("\tprivate ")
+          .append(pgsqlType == null ? null : pgsqlType.getJavaType())
+          .append(" ")
+          .append(StrUtil.toCamelCase(o.getName()))
+          .append(";");
+    }
+    entityStr.append("\n}");
     return entityStr.toString();
   }
 
+  private static String getFieldAnnotationAppend(TypePgsqlWithJavaEnum pgsqlType) {
+    return pgsqlType == null
+        ? ""
+        : (pgsqlType.getAnnotations() == null
+                ? ""
+                : "\t" + StringUtils.join(pgsqlType.getAnnotations(), "\n\t"))
+            + "\n";
+  }
+
   /**
-   * 获取Java实体名
+   * 初始化java实体
    *
-   * @param ddlSql
+   * @param tableInfo
    * @return
    */
-  private static String getJavaEntityName(String ddlSql) {
-    return StringUtils.capitalize(StrUtil.toCamelCase(createDdlGetTableInfo(ddlSql).getName()));
+  public StringBuilder ddlGenJavaEntityInit(TableInfo tableInfo) {
+    String entityName = getJavaEntityName(tableInfo); // 实体名
+    StringBuilder entityStr = new StringBuilder();
+    getFieldJavaEntityImports(tableInfo.getFieldList())
+        .forEach(o -> entityStr.append(o).append("\n"));
+    entityStr.append("\n");
+    entityStr.append(formatJavaEntityRemark(tableInfo));
+    if (this.useLombok.get()) {
+      entityStr.append("@Data\n" + "@NoArgsConstructor\n" + "@AllArgsConstructor\n");
+    }
+    entityStr.append("public class ").append(entityName).append(" implements Serializable {\n");
+    entityStr.append("\tprivate static final long serialVersionUID = 1L;");
+    return entityStr;
+  }
+
+  /**
+   * 获取java导入
+   *
+   * @param fieldList
+   * @return
+   */
+  private List<String> getFieldJavaEntityImports(List<TableField> fieldList) {
+    List<String> list = new ArrayList<>();
+    list.add("import java.io.Serializable;");
+    if (this.useLombok.get()) {
+      list.add("import lombok.AllArgsConstructor;");
+      list.add("import lombok.Data;");
+      list.add("import lombok.NoArgsConstructor;");
+    }
+    for (TableField field : fieldList) {
+      List<String> importsByPgsqlType =
+          TypePgsqlWithJavaEnum.getImportsByPgsqlType(field.getType());
+      if (importsByPgsqlType == null) {
+        continue;
+      }
+      list.addAll(importsByPgsqlType);
+    }
+    list = removeDuplicates(list);
+    return sort(list);
+  }
+
+  /**
+   * 去重
+   *
+   * @param list
+   * @param <T>
+   * @return
+   */
+  private static <T> List<T> removeDuplicates(List<T> list) {
+    return new ArrayList<>(new LinkedHashSet<>(list));
+  }
+
+  private static List<String> sort(List<String> list) {
+    list.sort(String::compareTo);
+    return list;
   }
 
   /**
    * 获取Java实体名
    *
-   * @param ddlSql
+   * @param tableInfo
    * @return
    */
-  private static String formatJavaEntityRemark(String ddlSql) {
-    String remark = createDdlGetTableInfo(ddlSql).getRemark();
+  private static String getJavaEntityName(TableInfo tableInfo) {
+    return StringUtils.capitalize(StrUtil.toCamelCase(tableInfo.getName()));
+  }
+
+  /**
+   * 获取Java实体名
+   *
+   * @param tableInfo
+   * @return
+   */
+  private static String formatJavaEntityRemark(TableInfo tableInfo) {
+    String remark = tableInfo.getRemark();
     if (remark == null) {
       return "";
     }
@@ -134,89 +210,6 @@ public class PgsqlGenService {
     if (StringUtils.isBlank(remark)) {
       return "";
     }
-    return "    /**\n" + "     * " + remark + "\n" + "     */\n";
-  }
-
-  private static List<TableField> createDdlGetFieldInfo(String ddlSql) {
-    List<TableField> list = new ArrayList<>();
-    String[] sqlSplits = ddlSql.trim().split(";");
-    String createSql = sqlSplits[0];
-    String[] fieldSplits = createSql.split("\n");
-    Map<String, String> remark = getRemark(ddlSql);
-    for (int i = 1; i < fieldSplits.length; i++) {
-      if (fieldSplits[i].trim().startsWith("CONSTRAINT") || fieldSplits[i].startsWith(")")) {
-        continue;
-      }
-      String[] fieldSqlSplits = fieldSplits[i].trim().split(" ");
-      TableField field = new TableField();
-      field.setName(fieldSqlSplits[0].replaceAll("\"", ""));
-      field.setType(fieldSqlSplits[1].replaceAll("\"", "").replaceAll(",", ""));
-      field.setRemark(remark.get(field.getName()));
-      list.add(field);
-    }
-    return list;
-  }
-
-  /**
-   * 获取备注
-   *
-   * @param ddlSql
-   * @return
-   */
-  private static Map<String, String> getRemark(String ddlSql) {
-    Map<String, String> map = new HashMap<>();
-    if (StringUtils.isBlank(ddlSql)) {
-      return map;
-    }
-    String[] sqlSplits = ddlSql.trim().split(";");
-    TableInfo tableInfo = createDdlGetTableInfo(ddlSql);
-    for (String sqlSplit : sqlSplits) {
-      if (StringUtils.isBlank(sqlSplit)) {
-        continue;
-      }
-      if (sqlSplit.trim().startsWith("COMMENT ON COLUMN")) {
-        map.put(
-            StringUtils.substringBetween(sqlSplit, ".", "IS")
-                .trim()
-                .replaceAll("\"", "")
-                .replaceAll(tableInfo.getName(), "")
-                .replaceAll("\\.", ""),
-            sqlSplit.trim().replaceAll("\n", "").split(" IS ")[1].trim().replaceAll("'", ""));
-      }
-    }
-    return map;
-  }
-
-  /**
-   * create sql提取表名
-   *
-   * @param ddlSql
-   * @return
-   */
-  private static TableInfo createDdlGetTableInfo(String ddlSql) {
-    String[] sqlSplits = ddlSql.trim().split(";");
-    String createSql = sqlSplits[0];
-    String[] fieldSplits = createSql.split("\n");
-    String[] tableNameSplits = fieldSplits[0].split("\\(");
-    String tableCreatePrefix = tableNameSplits[0].trim();
-    String tableName;
-    if (tableCreatePrefix.contains("\"public\".")) {
-      tableName =
-          StringUtils.remove(
-              StringUtils.removeStart(tableCreatePrefix, "CREATE TABLE \"public\"."), "\"");
-    } else {
-      tableName =
-          StringUtils.remove(StringUtils.removeStart(tableCreatePrefix, "CREATE TABLE "), "\"");
-    }
-    String remark = null;
-    for (String sqlSplit : sqlSplits) {
-      if (sqlSplit.trim().startsWith("COMMENT ON")) {
-        remark = sqlSplit.trim().replaceAll("\n", "").split(" IS ")[1].trim().replaceAll("'", "");
-      }
-    }
-    TableInfo tableInfo = new TableInfo();
-    tableInfo.setName(tableName);
-    tableInfo.setRemark(remark);
-    return tableInfo;
+    return "\t/**\n" + "\t * " + remark + "\n" + "\t */\n";
   }
 }

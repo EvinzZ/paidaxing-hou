@@ -8,4 +8,5 @@ import lombok.Data;
 public class DdlGenEntitySqlParam {
   private String ddlSql;
   private DevLanOpsClientEnum opsClient;
+  private boolean useLombok = true;
 }
