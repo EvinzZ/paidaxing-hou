@@ -109,7 +109,7 @@ public class PgsqlGenService {
         ? ""
         : (pgsqlType.getAnnotations() == null
                 ? ""
-                : "\t" + StringUtils.join(pgsqlType.getAnnotations(), "\n\t"))
+                : "\n\t" + StringUtils.join(pgsqlType.getAnnotations(), "\n\t"))
             + "\n";
   }
 
