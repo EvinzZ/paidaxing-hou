@@ -68,11 +68,11 @@ public class CreateDdlSqlUtils {
     String tableName;
     if (tableCreatePrefix.contains("\"public\".")) {
       tableName =
-              StringUtils.remove(
-                      StringUtils.removeStart(tableCreatePrefix, "CREATE TABLE \"public\"."), "\"");
+          StringUtils.remove(
+              StringUtils.removeStart(tableCreatePrefix, "CREATE TABLE \"public\"."), "\"");
     } else {
       tableName =
-              StringUtils.remove(StringUtils.removeStart(tableCreatePrefix, "CREATE TABLE "), "\"");
+          StringUtils.remove(StringUtils.removeStart(tableCreatePrefix, "CREATE TABLE "), "\"");
     }
     return tableName;
   }
@@ -84,11 +84,18 @@ public class CreateDdlSqlUtils {
    * @return
    */
   public static TableInfo ddlGetTableInfo(String ddlSql) {
-    String tableName = ddlGetTableName(ddlSql);
+    TableInfo tableInfo = new TableInfo();
+    tableInfo.setName(ddlGetTableName(ddlSql));
+    tableInfo.setRemark(getTableRemark(ddlSql));
+    tableInfo.setFieldList(ddlGetFieldInfo(ddlSql));
+    return tableInfo;
+  }
+
+  private static String getTableRemark(String ddlSql) {
     String[] sqlSplits = ddlSql.trim().split(";");
     String remark = null;
     for (String sqlSplit : sqlSplits) {
-      if (sqlSplit.trim().startsWith("COMMENT ON")) {
+      if (sqlSplit.trim().startsWith("COMMENT ON TABLE")) {
         System.out.println(sqlSplit.trim());
         remark =
             sqlSplit
@@ -100,10 +107,6 @@ public class CreateDdlSqlUtils {
                 .replaceAll("'", "");
       }
     }
-    TableInfo tableInfo = new TableInfo();
-    tableInfo.setName(tableName);
-    tableInfo.setRemark(remark);
-    tableInfo.setFieldList(ddlGetFieldInfo(ddlSql));
-    return tableInfo;
+    return remark;
   }
 }
