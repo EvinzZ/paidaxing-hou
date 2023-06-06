@@ -14,6 +14,8 @@ public enum TypePgsqlWithJavaEnum {
   VARCHAR("varchar", "String", null, null),
   TEXT("text", "String", null, null),
   INT4("int4", "Integer", null, null),
+  FLOAT4("float4", "Double", null, null),
+  FLOAT8("float8", "Double", null, null),
   INT2("int2", "Integer", null, null),
   INT8("int8", "Long", null, null),
   CHAR("char", "String", null, null),

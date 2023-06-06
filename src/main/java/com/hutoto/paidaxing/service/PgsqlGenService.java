@@ -86,9 +86,25 @@ public class PgsqlGenService {
    * @return
    */
   public String ddlGenJavaEntity(String ddlSql) {
+    StringBuilder entityStr = new StringBuilder();
     TableInfo tableInfo = CreateDdlSqlUtils.ddlGetTableInfo(ddlSql);
-    StringBuilder entityStr = ddlGenJavaEntityInit(tableInfo);
-    List<TableField> fieldList = tableInfo.getFieldList();
+    writeImports(tableInfo, entityStr);
+    writeJavaEntityRemark(tableInfo, entityStr);
+    writeJavaEntityAnnotations(entityStr);
+    writeJavaEntityName(tableInfo, entityStr);
+    writeJavaEntitySerialUid(entityStr);
+    writeJavaEntityField(tableInfo.getFieldList(), entityStr);
+    writeEnd(entityStr);
+    return entityStr.toString();
+  }
+
+  /**
+   * 拼接java实体字段
+   *
+   * @param fieldList 字段列表
+   * @param entityStr 待拼写字符串
+   */
+  private static void writeJavaEntityField(List<TableField> fieldList, StringBuilder entityStr) {
     for (TableField o : fieldList) {
       TypePgsqlWithJavaEnum pgsqlType = TypePgsqlWithJavaEnum.getByPgsqlType(o.getType());
       entityStr
@@ -100,8 +116,12 @@ public class PgsqlGenService {
           .append(StrUtil.toCamelCase(o.getName()))
           .append(";");
     }
-    entityStr.append("\n}");
-    return entityStr.toString();
+  }
+
+  private void writeJavaEntityAnnotations(StringBuilder appendStr) {
+    if (this.useLombok.get()) {
+      appendStr.append("@Data\n" + "@NoArgsConstructor\n" + "@AllArgsConstructor\n");
+    }
   }
 
   private static String getFieldAnnotationAppend(TypePgsqlWithJavaEnum pgsqlType) {
@@ -119,19 +139,31 @@ public class PgsqlGenService {
    * @param tableInfo
    * @return
    */
-  public StringBuilder ddlGenJavaEntityInit(TableInfo tableInfo) {
-    String entityName = getJavaEntityName(tableInfo); // 实体名
-    StringBuilder entityStr = new StringBuilder();
+  public void writeJavaEntityName(TableInfo tableInfo, StringBuilder appendStr) {
+    appendStr
+        .append("public class ")
+        .append(getJavaEntityName(tableInfo))
+        .append(" implements Serializable {\n");
+  }
+
+  private void writeJavaEntitySerialUid(StringBuilder appendStr) {
+    appendStr.append("\tprivate static final long serialVersionUID = 1L;");
+  }
+
+  /**
+   * 拼接import声明包
+   *
+   * @param tableInfo 表信息
+   * @param appendStr 主字符串
+   */
+  private void writeImports(TableInfo tableInfo, StringBuilder appendStr) {
     getFieldJavaEntityImports(tableInfo.getFieldList())
-        .forEach(o -> entityStr.append(o).append("\n"));
-    entityStr.append("\n");
-    entityStr.append(formatJavaEntityRemark(tableInfo));
-    if (this.useLombok.get()) {
-      entityStr.append("@Data\n" + "@NoArgsConstructor\n" + "@AllArgsConstructor\n");
-    }
-    entityStr.append("public class ").append(entityName).append(" implements Serializable {\n");
-    entityStr.append("\tprivate static final long serialVersionUID = 1L;");
-    return entityStr;
+        .forEach(o -> appendStr.append(o).append("\n"));
+    appendStr.append("\n");
+  }
+
+  private void writeEnd(StringBuilder appendStr) {
+    appendStr.append("\n}");
   }
 
   /**
@@ -187,17 +219,17 @@ public class PgsqlGenService {
   }
 
   /**
-   * 获取Java实体名
+   * 拼接java备注
    *
    * @param tableInfo
    * @return
    */
-  private static String formatJavaEntityRemark(TableInfo tableInfo) {
+  private static void writeJavaEntityRemark(TableInfo tableInfo, StringBuilder appendStr) {
     String remark = tableInfo.getRemark();
     if (remark == null) {
-      return "";
+      return;
     }
-    return "/**\n" + " * " + remark + "\n" + " */\n";
+    appendStr.append("/**\n" + " * " + remark + "\n" + " */\n");
   }
 
   /**
