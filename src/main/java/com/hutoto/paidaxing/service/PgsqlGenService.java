@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Random;
 
 /** pgsql语句生成 */
 @Service
@@ -243,5 +244,17 @@ public class PgsqlGenService {
       return "";
     }
     return "\t/**\n" + "\t * " + remark + "\n" + "\t */\n";
+  }
+
+  public static void main(String[] args) {
+    for (int i = 0; i < 152; i++) {
+      int max = 100000;
+      int min = 10000;
+      Random random = new Random();
+
+      int s = random.nextInt(max) % (max - min + 1) + min;
+
+      System.out.println("40.8" + s);
+    }
   }
 }
