@@ -109,8 +109,8 @@ public class PgsqlGenService {
     for (TableField o : fieldList) {
       TypePgsqlWithJavaEnum pgsqlType = TypePgsqlWithJavaEnum.getByPgsqlType(o.getType());
       entityStr
-          .append(getFieldAnnotationAppend(pgsqlType))
           .append(formatJavaFieldRemark(o.getRemark()))
+          .append(getFieldAnnotationAppend(pgsqlType))
           .append("\tprivate ")
           .append(pgsqlType == null ? null : pgsqlType.getJavaType())
           .append(" ")
@@ -243,7 +243,9 @@ public class PgsqlGenService {
     if (StringUtils.isBlank(remark)) {
       return "";
     }
-    return "\t/**\n" + "\t * " + remark + "\n" + "\t */\n";
+    remark = remark.replaceAll("\n", "\n\t * ");
+    remark = remark.replaceAll("\r", "\r\t * ");
+    return "\n\t/**\n" + "\t * " + remark + "\n" + "\t */";
   }
 
   public static void main(String[] args) {
