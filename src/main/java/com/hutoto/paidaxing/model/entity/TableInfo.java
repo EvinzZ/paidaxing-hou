@@ -12,4 +12,6 @@ public class TableInfo {
   String remark;
   /** 字段信息 */
   List<TableField> fieldList;
+  /** 主键 */
+  String primaryKey;
 }

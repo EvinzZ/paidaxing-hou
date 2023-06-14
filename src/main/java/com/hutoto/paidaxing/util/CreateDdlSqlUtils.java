@@ -1,5 +1,6 @@
 package com.hutoto.paidaxing.util;
 
+import com.hutoto.paidaxing.exception.BizException;
 import com.hutoto.paidaxing.model.entity.TableField;
 import com.hutoto.paidaxing.model.entity.TableInfo;
 import org.apache.commons.lang3.StringUtils;
@@ -28,6 +29,31 @@ public class CreateDdlSqlUtils {
       list.add(field);
     }
     return list;
+  }
+
+  /**
+   * 提取主键
+   *
+   * @param ddlSql
+   * @return
+   * @throws BizException
+   */
+  private static String ddlGetPrimaryKey(String ddlSql) throws BizException {
+    String[] sqlSplits = ddlSql.trim().split(";");
+    String createSql = sqlSplits[0];
+    String[] fieldSplits = createSql.split("\n");
+    for (int i = 1; i < fieldSplits.length; i++) {
+      if (fieldSplits[i].trim().startsWith("CONSTRAINT")) {
+
+        return StringUtils.substringAfter(fieldSplits[i].trim(), "PRIMARY KEY")
+            .replaceAll("CONSTRAINT", "")
+            .replaceAll("PRIMARY KEY", "")
+            .replaceAll("\\(", "")
+            .replaceAll("\\)", "")
+            .replaceAll("\"", "").trim();
+      }
+    }
+    throw new BizException("ddlSql中没有主键信息");
   }
 
   /**
@@ -83,11 +109,12 @@ public class CreateDdlSqlUtils {
    * @param ddlSql
    * @return
    */
-  public static TableInfo ddlGetTableInfo(String ddlSql) {
+  public static TableInfo ddlGetTableInfo(String ddlSql) throws BizException {
     TableInfo tableInfo = new TableInfo();
     tableInfo.setName(ddlGetTableName(ddlSql));
     tableInfo.setRemark(getTableRemark(ddlSql));
     tableInfo.setFieldList(ddlGetFieldInfo(ddlSql));
+    tableInfo.setPrimaryKey(ddlGetPrimaryKey(ddlSql));
     return tableInfo;
   }
 

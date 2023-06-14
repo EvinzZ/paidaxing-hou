@@ -86,7 +86,7 @@ public class PgsqlGenService {
    * @param ddlSql
    * @return
    */
-  public String ddlGenJavaEntity(String ddlSql) {
+  public String ddlGenJavaEntity(String ddlSql) throws BizException {
     StringBuilder entityStr = new StringBuilder();
     TableInfo tableInfo = CreateDdlSqlUtils.ddlGetTableInfo(ddlSql);
     writeImports(tableInfo, entityStr);
@@ -248,15 +248,29 @@ public class PgsqlGenService {
     return "\n\t/**\n" + "\t * " + remark + "\n" + "\t */";
   }
 
-  public static void main(String[] args) {
-    for (int i = 0; i < 152; i++) {
-      int max = 100000;
-      int min = 10000;
-      Random random = new Random();
-
-      int s = random.nextInt(max) % (max - min + 1) + min;
-
-      System.out.println("40.8" + s);
+  /**
+   * 生成update sql
+   *
+   * @param ddlSql
+   * @param client
+   * @return
+   */
+  public String ddlGenUpdateSql(String ddlSql, DaoOpsClientEnum client) throws BizException {
+    TableInfo tableInfo = CreateDdlSqlUtils.ddlGetTableInfo(ddlSql);
+    String tableName = tableInfo.getName();
+    List<TableField> fieldList = tableInfo.getFieldList();
+    StringBuilder updateSqlStr = new StringBuilder("UPDATE ");
+    updateSqlStr.append(tableName).append(" SET ");
+    switch (client) {
+      case NamedParameterJdbcTemplate:
+        fieldList.forEach(o -> updateSqlStr.append(o.getName()).append("=:").append(StrUtil.toCamelCase(o.getName())).append(", "));
+        break;
+      default:
+        throw new BizException("该类型暂不支持");
     }
+    updateSqlStr.deleteCharAt(updateSqlStr.lastIndexOf(","));
+    updateSqlStr.deleteCharAt(updateSqlStr.lastIndexOf(" "));
+    updateSqlStr.append(" WHERE ").append(tableInfo.getPrimaryKey()).append("=:").append(StrUtil.toCamelCase(tableInfo.getPrimaryKey()));
+    return updateSqlStr.toString();
   }
 }
