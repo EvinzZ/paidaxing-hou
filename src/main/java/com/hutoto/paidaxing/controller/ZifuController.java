@@ -1,5 +1,6 @@
 package com.hutoto.paidaxing.controller;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.pinyin.PinyinUtil;
 import com.hutoto.paidaxing.commons.Result;
 import lombok.extern.slf4j.Slf4j;
@@ -9,11 +10,37 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 拼音处理接口 */
+import java.util.Locale;
+
+/** 字符处理接口 */
 @Slf4j
 @RestController
-@RequestMapping("pinyin")
-public class PinyinController {
+@RequestMapping("zifu")
+public class ZifuController {
+
+  /**
+   * 驼峰转下滑
+   *
+   * @param text
+   * @param upperCase
+   * @return
+   */
+  @GetMapping("toUnderlineCase")
+  public Result toUnderlineCase(@RequestParam String text, @RequestParam Boolean upperCase) {
+    if (upperCase) return Result.ok().data(StrUtil.toUnderlineCase(text).toUpperCase(Locale.ROOT));
+    else return Result.ok().data(StrUtil.toUnderlineCase(text));
+  }
+
+  /**
+   * 下划线转驼峰
+   *
+   * @param text
+   * @return
+   */
+  @GetMapping("toCamelCase")
+  public Result toCamelCase(@RequestParam String text) {
+    return Result.ok().data(StrUtil.toCamelCase(text));
+  }
 
   /**
    * 获取拼音首字母
