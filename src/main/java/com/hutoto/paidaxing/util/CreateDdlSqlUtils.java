@@ -46,7 +46,6 @@ public class CreateDdlSqlUtils {
       if (fieldSplits[i].trim().startsWith("CONSTRAINT")) {
 
         return StringUtils.substringAfter(fieldSplits[i].trim(), "PRIMARY KEY")
-            .replaceAll("CONSTRAINT", "")
             .replaceAll("PRIMARY KEY", "")
             .replaceAll("\\(", "")
             .replaceAll("\\)", "")
